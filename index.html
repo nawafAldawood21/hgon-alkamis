@@ -318,6 +318,16 @@
   .tr-bar i{display:block;height:100%;background:var(--ink);border-radius:4px 0 0 4px;}
   .tr-sub{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:12px;font-weight:500;opacity:.7;}
 
+
+  .h2h-card{background:var(--felt);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;}
+  .h2h-name{font-family:var(--font-display);font-weight:700;font-size:16px;margin-bottom:6px;}
+  .h2h-block{padding:8px 0;border-top:1px dashed var(--line);}
+  .h2h-name + .h2h-block{border-top:none;padding-top:2px;}
+  .h2h-title{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px;font-weight:700;opacity:.75;margin-bottom:6px;}
+  .h2h-title b{font-family:var(--font-body);}
+  .h2h-line{display:flex;justify-content:space-between;gap:8px;font-size:14px;font-weight:500;margin-bottom:6px;}
+  .h2h-line b{font-family:var(--font-display);font-weight:900;font-size:17px;}
+
   .hint{font-size:12px;opacity:0.55;margin-top:4px;font-weight:500;}
   .divider{border-top:1px dashed var(--line);margin:14px 0;}
 
@@ -1558,15 +1568,37 @@ function openPlayerDetail(pid){
   const others = players.filter(p=>p.id!==pid);
   const rate = st.played ? Math.round((st.won/st.played)*100) : 0;
 
-  const h2hRows = others.map(o=>{
-    const h2h = headToHead(pid, o.id);
-    if(!h2h.together && !h2h.p1Wins && !h2h.p2Wins) return '';
-    return `<div class="stat-row" style="cursor:default">
-      <div class="stat-name" style="font-size:14px">${o.name}</div>
-      <div class="stat-nums">
-        <div><span>${h2h.p1Wins}-${h2h.p2Wins}</span><small>ضده</small></div>
-        <div><span>${h2h.togetherWins}/${h2h.together}</span><small>معه</small></div>
-      </div>
+  const me = playerName(pid);
+  const h2hList = others.map(o=>{
+    const h = headToHead(pid, o.id);
+    const against = h.p1Wins + h.p2Wins;
+    return {o, h, against, total: against + h.together};
+  }).filter(x=> x.total > 0).sort((a,b)=> b.total - a.total);
+
+  const gamesWord = n => n===1 ? 'صكة' : 'صكك';
+  const h2hRows = h2hList.map(({o, h, against})=>{
+    let againstBlock = '';
+    if(against){
+      const pct = Math.round((h.p1Wins/against)*100);
+      againstBlock = `<div class="h2h-block">
+        <div class="h2h-title"><span>⚔️ لعبوا ضد بعض (${against} ${gamesWord(against)})</span><b>نسبة ${me} <bdi dir="ltr">${pct}%</bdi></b></div>
+        <div class="h2h-line"><span>${me} فاز <b>${h.p1Wins}</b></span><span>${o.name} فاز <b>${h.p2Wins}</b></span></div>
+        <div class="tr-bar"><i style="width:${pct}%"></i></div>
+      </div>`;
+    }
+    let togetherBlock = '';
+    if(h.together){
+      const tl = h.together - h.togetherWins;
+      const pct = Math.round((h.togetherWins/h.together)*100);
+      togetherBlock = `<div class="h2h-block">
+        <div class="h2h-title"><span>🤝 لعبوا كفريق واحد (${h.together} ${gamesWord(h.together)})</span><b>نسبة الفوز <bdi dir="ltr">${pct}%</bdi></b></div>
+        <div class="h2h-line"><span>فازوا <b>${h.togetherWins}</b></span><span>خسروا <b>${tl}</b></span></div>
+        <div class="tr-bar"><i style="width:${pct}%"></i></div>
+      </div>`;
+    }
+    return `<div class="h2h-card">
+      <div class="h2h-name">${me} و${o.name}</div>
+      ${againstBlock}${togetherBlock}
     </div>`;
   }).join('');
 
@@ -1592,7 +1624,7 @@ function openPlayerDetail(pid){
 
       <div class="divider"></div>
       <h2 style="font-size:14px;margin-bottom:8px">ضد ومع اللاعبين</h2>
-      <div class="hint" style="margin-bottom:6px">ضده = فوز/خسارة لما يكونون خصوم • معه = فوز من أصل صكك كفريق واحد</div>
+      <div class="hint" style="margin-bottom:8px">لكل لاعب: كم مرة فاز ${me} عليه لما كانوا خصوم، وكم مرة فازوا مع بعض لما لعبوا بنفس الفريق. كل صكة فيها خصمين، فتنحسب مرة لكل خصم، ولهذا مجموع "ضد بعض" يطلع ضعف عدد صكك ${me}.</div>
       ${h2hRows || '<div class="empty">ما فيه بيانات كافية بعد</div>'}
 
       <div class="divider"></div>
