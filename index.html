@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
 <title>حقون الخميس — حسبة بلوت</title>
 <style>
   @font-face{
@@ -167,33 +167,96 @@
   .chip .x{opacity:.6;font-weight:700;margin-right:2px;}
   .chips-wrap{display:flex;flex-wrap:wrap;gap:8px;}
 
-  /* scoreboard - paper scorecard signature element */
-  .scorecard{
-    background:var(--paper);
-    color:var(--ink);
-    border-radius:4px;
-    padding:36px 16px 10px;
-    position:relative;
-    box-shadow:0 8px 20px rgba(0,0,0,0.35);
-    background-image:
-      repeating-linear-gradient(180deg, transparent, transparent 27px, rgba(0,0,0,0.06) 28px);
+  /* ===== شاشة اللعب: هيدر ثابت فوق + قائمة تتحرك + شريط إدخال ثابت تحت ===== */
+  html.play-lock, body.play-active{overflow:hidden;height:100%;overscroll-behavior:none;}
+  body.play-active{padding:0;}
+  body.play-active main{max-width:none;margin:0;padding:0;}
+  .play-app{
+    position:fixed;left:0;right:0;top:0;
+    height:var(--app-h,100dvh);
+    max-width:640px;margin:0 auto;
+    display:flex;flex-direction:column;
+    background:var(--felt-dark);
+    z-index:10;
   }
-  .scorecard::before{
-    content:'سجل نقاط الجلسة';
-    position:absolute;top:10px;right:16px;
-    background:var(--gold);color:#ffffff;
-    font-family:var(--font-body);font-weight:700;font-size:11px;
-    padding:3px 10px;border-radius:6px;
+  .play-head{
+    flex:none;background:var(--paper);
+    border-bottom:1px solid var(--line);
+    padding:0 14px 8px;
   }
-  .sc-teams{display:flex;justify-content:space-between;margin-bottom:6px;gap:10px;}
-  .sc-team-name{font-family:var(--font-display);font-weight:700;font-size:14px;line-height:1.3;}
-  .sc-scores{display:flex;justify-content:space-between;align-items:baseline;margin:6px 0 12px;}
-  .sc-scores .num{font-family:var(--font-display);font-weight:900;font-size:42px;line-height:1;}
-  .sc-scores .vs{font-size:12px;opacity:0.55;font-weight:700;text-align:center;}
-  .sc-target{font-size:11px;opacity:0.55;text-align:center;margin-bottom:8px;}
-  .hand-list{max-height:150px;overflow-y:auto;border-top:1px dashed rgba(0,0,0,0.25);padding-top:8px;}
+  .play-strip{display:flex;align-items:center;justify-content:space-between;gap:8px;height:46px;}
+  .strip-title{font-size:12px;font-weight:700;opacity:.6;text-align:center;flex:1;}
+  .strip-btn{
+    height:34px;min-width:34px;padding:0 10px;border-radius:10px;
+    border:1px solid var(--line);background:#fff;color:var(--ink);
+    font-family:var(--font-body);font-weight:700;font-size:13px;cursor:pointer;
+  }
+  .ph-grid{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;column-gap:8px;row-gap:0;}
+  .ph-team{font-family:var(--font-display);font-weight:700;font-size:14px;line-height:1.35;}
+  .ph-team.b,.ph-num.b{text-align:left;}
+  .ph-num{font-family:var(--font-display);font-weight:900;font-size:46px;line-height:1.1;}
+  .ph-mid{text-align:center;font-size:12px;font-weight:700;opacity:.65;line-height:1.5;}
+  .dealer-arrow-btn{
+    background:none;border:none;padding:4px;cursor:pointer;
+    color:var(--ink);display:flex;align-items:center;justify-content:center;
+  }
+  .dealer-arrow-btn:active{opacity:.6;}
+  .play-app.typing .play-strip{display:none;}
+  .play-app.typing .play-head{padding-top:8px;}
+  .play-app.typing .ph-num{font-size:38px;}
+
+  .play-scroll{
+    flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;padding:12px 14px 16px;
+  }
   .hand-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 2px;font-weight:500;}
   .hand-row .idx{opacity:0.5;width:24px;}
+  .hand-thumb{width:24px;height:24px;border-radius:6px;object-fit:cover;cursor:pointer;}
+  .hand-box{
+    border:1px solid var(--line);border-radius:12px;background:#fff;
+    padding:4px 12px;max-height:calc(var(--app-h,100dvh) * .36);overflow-y:auto;
+  }
+  .hand-box .hand-row{font-size:16px;padding:7px 2px;border-bottom:1px dashed var(--line);align-items:center;}
+  .hand-box .hand-row:last-child{border-bottom:none;}
+  .hand-empty{text-align:center;padding:16px 6px;font-size:14px;font-weight:700;opacity:.55;line-height:1.7;}
+  .hand-empty small{display:block;font-weight:500;font-size:12px;margin-top:4px;}
+  .prev-card{margin:12px 0 0;}
+  .end-wrap{margin-top:12px;}
+
+  .entry-bar{
+    flex:none;background:#fff;border-top:1px solid var(--line);
+    padding:10px 14px 12px;box-shadow:0 -4px 14px rgba(0,0,0,0.05);
+  }
+  .entry-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:stretch;}
+  .entry-grid input.score-inp{
+    height:56px;font-size:26px;text-align:center;padding:0 6px;border-radius:12px;
+    font-family:var(--font-display);font-weight:900;
+  }
+  .entry-grid .rec-btn{height:56px;padding:0 18px;font-size:15px;}
+  .entry-actions{display:flex;gap:8px;margin-top:8px;}
+  .mini-btn{
+    flex:1;height:40px;margin:0;display:flex;align-items:center;justify-content:center;gap:6px;
+    border:1px solid rgba(20,20,15,0.25);border-radius:10px;background:#fff;color:var(--cream);
+    font-family:var(--font-body);font-weight:700;font-size:13px;cursor:pointer;
+  }
+  .mini-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  /* ===== نسبة الفوز المتوقعة ===== */
+  .proj-team{font-family:var(--font-display);font-weight:700;font-size:13px;opacity:.6;margin:16px 0 4px;}
+  .proj-player{padding:10px 0;border-bottom:1px solid var(--line);}
+  .proj-player:last-child{border-bottom:none;}
+  .proj-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px;}
+  .proj-name{font-family:var(--font-display);font-weight:700;font-size:17px;}
+  .proj-now{font-size:12px;font-weight:500;opacity:.6;}
+  .proj-pills{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .proj-pill{border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:var(--felt);}
+  .proj-pill .lbl{display:block;font-size:11px;font-weight:700;opacity:.6;margin-bottom:2px;}
+  .proj-pill .val{display:flex;align-items:baseline;gap:8px;font-family:var(--font-display);font-weight:900;font-size:20px;}
+  .proj-pill .dlt{font-family:var(--font-body);font-size:12px;font-weight:700;}
+  .proj-pill.up .dlt{color:var(--ink);}
+  .proj-pill.down .dlt{color:var(--red);}
+  .proj-pill.up{border-color:rgba(20,20,15,0.28);}
+  .proj-pill.down{border-color:rgba(168,58,58,0.35);}
 
   .saalfa-result{
     display:flex;justify-content:space-between;align-items:center;
@@ -230,7 +293,7 @@
   }
   .overlay .sheet{
     background:#ffffff;border:1px solid var(--line);
-    border-radius:18px 18px 0 0;padding:20px;width:100%;max-width:640px;max-height:85vh;overflow-y:auto;
+    border-radius:18px 18px 0 0;padding:20px;width:100%;max-width:640px;max-height:85vh;max-height:85dvh;overflow-y:auto;
     box-shadow:0 -4px 24px rgba(0,0,0,0.12);
   }
   .overlay .sheet h3{margin-top:0;color:var(--gold-bright);font-size:20px;}
@@ -320,8 +383,9 @@ const firebaseConfig = {
 };
 
 const isConfigured = firebaseConfig.apiKey && firebaseConfig.apiKey.indexOf('YOUR_') !== 0;
+const sdkLoaded = (typeof firebase !== 'undefined');   // يتحمّل من الإنترنت (gstatic)، ولو انحجب ما نكسر بقية الصفحة
 let db = null;
-if(isConfigured){
+if(isConfigured && sdkLoaded){
   firebase.initializeApp(firebaseConfig);
   db = firebase.firestore();
 }
@@ -359,12 +423,49 @@ function showSetupGate(){
   `;
 }
 
+function showSdkError(){
+  document.body.classList.remove('play-active');
+  document.documentElement.classList.remove('play-lock');
+  document.getElementById('chrome').style.display = 'none';
+  document.getElementById('playMenuBtn').style.display = 'none';
+  document.getElementById('main').innerHTML = `
+    <div class="card" style="margin-top:30px">
+      <h2>ما قدرنا نحمّل مكتبة قاعدة البيانات</h2>
+      <p style="font-size:14px;line-height:1.9">
+        التطبيق يحتاج يتصل بالإنترنت عشان يحمّل مكتبة Firebase من قوقل، وهذا ما صار.
+        إذا فاتح الملف من معاينة داخل المحادثة أو من الملف المنزّل على جهازك،
+        افتح التطبيق من رابط Netlify بدلها. وإذا كنت على الرابط أصلًا،
+        تأكد من النت وطفّي الـ VPN أو مانع الإعلانات وحدّث الصفحة.
+      </p>
+      <button class="btn" style="width:100%;margin-top:6px" onclick="location.reload()">إعادة المحاولة</button>
+    </div>
+  `;
+}
+
+function showConnectionError(err){
+  document.body.classList.remove('play-active');
+  document.documentElement.classList.remove('play-lock');
+  document.getElementById('chrome').style.display = 'none';
+  document.getElementById('playMenuBtn').style.display = 'none';
+  document.getElementById('main').innerHTML = `
+    <div class="card">
+      <h2>تعذر الاتصال بقاعدة البيانات</h2>
+      <p style="font-size:14px;line-height:1.9">
+        غالبًا صلاحيات Firestore انتهت أو مقفولة. روح Firebase Console →
+        Firestore Database → Rules، وتأكد إن القاعدة مو منتهية بتاريخ قديم،
+        أو خلها: <code>allow read, write: if true;</code> ثم اضغط Publish.
+      </p>
+      <p class="hint">تفاصيل تقنية: ${err && err.message ? err.message : String(err)}</p>
+    </div>
+  `;
+}
+
 function initRealtime(){
   db.collection('baloot').doc('players').onSnapshot(snap=>{
     const data = snap.data();
     players = (data && data.list) ? data.list : [];
     render();
-  }, err=>{ console.error('players listen error', err); });
+  }, err=>{ console.error('players listen error', err); showConnectionError(err); });
 
   db.collection('baloot').doc('sessions').onSnapshot(snap=>{
     const data = snap.data();
@@ -372,7 +473,7 @@ function initRealtime(){
     const active = sessions.find(s => !s.ended);
     activeSessionId = active ? active.id : null;
     render();
-  }, err=>{ console.error('sessions listen error', err); });
+  }, err=>{ console.error('sessions listen error', err); showConnectionError(err); });
 }
 
 async function savePlayers(){
@@ -398,6 +499,16 @@ function teamLabel(session, side){
   return `فريق (${teamNames(session, side)})`;
 }
 
+function dealerSeatOrder(session){
+  return [session.teamA[0], session.teamB[0], session.teamA[1], session.teamB[1]];
+}
+
+async function rotateDealer(session){
+  session.dealerIndex = ((session.dealerIndex || 0) + 1) % 4;
+  await saveSessions();
+  render();
+}
+
 function formatDuration(ms){
   const totalSec = Math.max(0, Math.floor((ms||0)/1000));
   const m = Math.floor(totalSec/60).toString().padStart(2,'0');
@@ -406,23 +517,57 @@ function formatDuration(ms){
 }
 
 let timerHandle = null;
+let pendingHandPhoto = null;
+
+/* نقفل الكيبورد قبل أي نافذة، عشان النافذة ما تختفي ورا الكيبورد */
+function mountOverlay(overlay){
+  const ae = document.activeElement;
+  if(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) ae.blur();
+  document.getElementById('overlay-root').appendChild(overlay);
+}
+
+function openPhotoLightbox(url){
+  const root = document.getElementById('overlay-root');
+  const overlay = el(`<div class="overlay" style="align-items:center">
+    <div class="sheet" style="border-radius:18px;max-width:520px">
+      <button class="close-x">✕</button>
+      <img src="${url}" style="width:100%;border-radius:12px;display:block;margin-top:10px" alt="صورة">
+    </div>
+  </div>`);
+  overlay.querySelector('.close-x').onclick = ()=> overlay.remove();
+  overlay.onclick = (e)=>{ if(e.target===overlay) overlay.remove(); };
+  mountOverlay(overlay);
+}
+
+async function uploadPhotoFile(file){
+  if(!isPhotoConfigured) throw new Error('cloudinary not configured');
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', cloudinaryConfig.uploadPreset);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/image/upload`, {
+    method: 'POST',
+    body: formData
+  });
+  if(!res.ok) throw new Error('upload failed: ' + res.status);
+  const data = await res.json();
+  return data.secure_url;
+}
 
 function openPlayMenu(){
   const root = document.getElementById('overlay-root');
   const overlay = el(`<div class="overlay">
-    <div class="sheet" style="max-width:320px;margin-inline-start:auto">
+    <div class="sheet">
       <button class="close-x">✕</button>
-      <h3 style="font-size:16px">القائمة</h3>
-      <div class="divider"></div>
-      <button class="btn secondary" id="goHistory" style="width:100%;margin-bottom:10px">السجل</button>
-      <button class="btn secondary" id="goPlayers" style="width:100%">اللاعبين</button>
+      <h3 style="font-size:18px;margin-bottom:14px">القائمة</h3>
+      <button class="btn secondary" id="goHistory" style="width:100%;margin-bottom:10px">📋 السجل</button>
+      <button class="btn secondary" id="goPlayers" style="width:100%">👥 اللاعبين</button>
     </div>
   </div>`);
   overlay.querySelector('.close-x').onclick = ()=> overlay.remove();
   overlay.onclick = (e)=>{ if(e.target===overlay) overlay.remove(); };
   overlay.querySelector('#goHistory').onclick = ()=>{ overlay.remove(); view='history'; render(); };
   overlay.querySelector('#goPlayers').onclick = ()=>{ overlay.remove(); view='players'; render(); };
-  root.appendChild(overlay);
+  mountOverlay(overlay);
 }
 document.getElementById('playMenuBtn').onclick = openPlayMenu;
 
@@ -512,153 +657,376 @@ function renderNav(){
 }
 
 function render(){
+  const session = liveSession();
+  const live = view==='play' && !!session;
   document.body.classList.toggle('immersive', view==='play');
+  document.body.classList.toggle('play-active', live);
+  document.documentElement.classList.toggle('play-lock', live);
   document.getElementById('chrome').style.display = (view==='play') ? 'none' : '';
-  document.getElementById('playMenuBtn').style.display = (view==='play') ? 'flex' : 'none';
-  if(timerHandle){ clearInterval(timerHandle); timerHandle=null; }
+  document.getElementById('playMenuBtn').style.display = (view==='play' && !live) ? 'flex' : 'none';
   renderNav();
+
+  /* شاشة اللعب شغّالة: نحدّث الأرقام بس من غير ما نعيد بناءها (عشان الكيبورد والتركيز ما يتأثرون) */
+  if(live){
+    const app = document.getElementById('playApp');
+    if(app && app.dataset.sid===session.id){
+      fillPlay(app, session);
+      if(!timerHandle) startTimer();
+      return;
+    }
+  }
+
+  stopTimer();
   const main = document.getElementById('main');
   main.innerHTML = '';
   if(view==='play') main.appendChild(renderPlay());
   if(view==='history') main.appendChild(renderHistory());
   if(view==='players') main.appendChild(renderPlayers());
+  if(live){ syncViewport(); startTimer(); }
 }
 
 /* ---- PLAY TAB ---- */
+function liveSession(){ return activeSessionId ? getSession(activeSessionId) : null; }
+
+/* مساحة الرؤية الفعلية (تتقلص لما يطلع الكيبورد) — تخلي شاشة اللعب دايم داخل الجزء المرئي */
+function syncViewport(){
+  const vv = window.visualViewport;
+  const h = vv ? vv.height * vv.scale : window.innerHeight;
+  const top = vv ? vv.offsetTop : 0;
+  document.documentElement.style.setProperty('--app-h', Math.round(h) + 'px');
+  const app = document.getElementById('playApp');
+  if(app){
+    app.style.transform = top ? `translateY(${Math.round(top)}px)` : '';
+    if(window.scrollY || window.scrollX) window.scrollTo(0,0);
+  }
+}
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', syncViewport);
+  window.visualViewport.addEventListener('scroll', syncViewport);
+}
+window.addEventListener('resize', syncViewport);
+window.addEventListener('orientationchange', ()=> setTimeout(syncViewport, 300));
+syncViewport();
+
+/* ---- مؤقت الصكة ---- */
+function tickTimer(){
+  const t = document.getElementById('liveTimer');
+  const s = liveSession();
+  if(!t || !s){ stopTimer(); return; }
+  t.textContent = '⏱ ' + formatDuration(Date.now() - (s.currentStart || Date.now()));
+}
+function startTimer(){
+  stopTimer();
+  tickTimer();
+  timerHandle = setInterval(tickTimer, 1000);
+}
+function stopTimer(){
+  if(timerHandle){ clearInterval(timerHandle); timerHandle = null; }
+}
+
+/* ---- توقع نسبة الفوز لكل لاعب ---- */
+function fmtPct(x){
+  const r = Math.round(x*10)/10;
+  return (Number.isInteger(r) ? String(r) : r.toFixed(1)) + '%';
+}
+function fmtDelta(d){
+  const r = Math.round(d*10)/10;
+  if(r === 0) return '0';
+  const body = Number.isInteger(Math.abs(r)) ? String(Math.abs(r)) : Math.abs(r).toFixed(1);
+  return (r > 0 ? '+' : '−') + body;
+}
+
+function projectionFor(pid){
+  const st = playerStats(pid);
+  const now = st.played ? (st.won/st.played)*100 : null;
+  const ifWin = ((st.won+1)/(st.played+1))*100;
+  const ifLose = (st.won/(st.played+1))*100;
+  return {
+    pid, played: st.played, won: st.won, now, ifWin, ifLose,
+    up: now===null ? null : ifWin - now,
+    down: now===null ? null : ifLose - now
+  };
+}
+
+function projectionHtml(session){
+  const playerBlock = (pid)=>{
+    const p = projectionFor(pid);
+    const nowText = p.now===null
+      ? 'ما لعب صكك بعد'
+      : `الحين <bdi dir="ltr">${fmtPct(p.now)}</bdi> · ${p.played} صكة`;
+    const upDelta = p.up===null ? '' : `<span class="dlt up">▲ <bdi dir="ltr">${fmtDelta(p.up)}</bdi></span>`;
+    const downDelta = p.down===null ? '' : `<span class="dlt down">▼ <bdi dir="ltr">${fmtDelta(p.down)}</bdi></span>`;
+    return `<div class="proj-player">
+      <div class="proj-top"><span class="proj-name">${playerName(pid)}</span><span class="proj-now">${nowText}</span></div>
+      <div class="proj-pills">
+        <div class="proj-pill up"><span class="lbl">لو فاز</span><span class="val"><bdi dir="ltr">${fmtPct(p.ifWin)}</bdi>${upDelta}</span></div>
+        <div class="proj-pill down"><span class="lbl">لو خسر</span><span class="val"><bdi dir="ltr">${fmtPct(p.ifLose)}</bdi>${downDelta}</span></div>
+      </div>
+    </div>`;
+  };
+  return ['A','B'].map(side=>{
+    const ids = side==='A' ? session.teamA : session.teamB;
+    return `<div class="proj-team">${teamLabel(session, side)}</div>${ids.map(playerBlock).join('')}`;
+  }).join('');
+}
+
+function openProjection(session, startMode){
+  const overlay = el(`<div class="overlay">
+    <div class="sheet">
+      <button class="close-x">✕</button>
+      <h3>نسبة الفوز بالسجل</h3>
+      <div class="hint" style="margin:2px 0 4px">إذا فاز فريقك الصكة الجاية، أو خسر، كذا بتصير نسبتك. فريق يفوز وفريق يخسر، فكل لاعب يشوف الحالتين.</div>
+      ${projectionHtml(session)}
+      <button class="btn" id="projOk" style="width:100%;margin-top:16px">${startMode?'يلا نبدأ':'تمام'}</button>
+    </div>
+  </div>`);
+  const close = ()=>{
+    overlay.remove();
+    if(startMode){
+      const a = document.getElementById('inpA');
+      if(a) a.focus();
+    }
+  };
+  overlay.querySelector('.close-x').onclick = close;
+  overlay.querySelector('#projOk').onclick = close;
+  overlay.onclick = (e)=>{ if(e.target===overlay) close(); };
+  mountOverlay(overlay);
+}
+
+/* ---- بناء شاشة اللعب (مرة وحدة، وبعدها تتحدّث من غير ما تنبني من جديد عشان الكيبورد ما يتقفل) ---- */
 function renderPlay(){
   const wrap = document.createElement('div');
-  const session = activeSessionId ? getSession(activeSessionId) : null;
+  const session = liveSession();
 
   if(!session){
     wrap.appendChild(renderNewSessionForm());
     return wrap;
   }
 
-  const finishedSaalifs = session.saalifs.filter(sf=>sf.winner);
-  const current = session.saalifs.find(sf=>!sf.winner);
-
-  const card = document.createElement('div');
-  card.className = 'card';
-
-  let cumA=0, cumB=0;
-  (current ? current.hands : []).forEach(h=>{ cumA+=h.a; cumB+=h.b; });
-
-  const winsA = finishedSaalifs.filter(sf=>sf.winner==='A').length;
-  const winsB = finishedSaalifs.filter(sf=>sf.winner==='B').length;
-  const lastSaalfa = session.saalifs[session.saalifs.length-1];
-  const canUndo = !!(lastSaalfa && lastSaalfa.hands.length>0);
-
-  card.innerHTML = `
-    <div class="session-header">
-      <span class="date">${session.date}</span>
-      <span class="team-tag">الهدف: ${session.target} نقطة</span>
-    </div>
-    <div class="scorecard">
-      <div class="sc-teams">
-        <div class="sc-team-name">${teamLabel(session,'A')}</div>
-        <div class="sc-team-name" style="text-align:left">${teamLabel(session,'B')}</div>
+  const app = document.createElement('div');
+  app.className = 'play-app';
+  app.id = 'playApp';
+  app.dataset.sid = session.id;
+  app.innerHTML = `
+    <div class="play-head">
+      <div class="play-strip">
+        <button class="strip-btn" id="menuBtnInline" aria-label="القائمة">☰</button>
+        <span class="strip-title" id="hdrInfo"></span>
+        <button class="strip-btn" id="projBtn">📊 النسب</button>
       </div>
-      <div class="sc-scores">
-        <div class="num">${cumA}</div>
-        <div class="vs">صكة ${finishedSaalifs.length+1}<br>(${winsA} : ${winsB})<div class="timer-badge" id="liveTimer">⏱ 00:00</div></div>
-        <div class="num">${cumB}</div>
-      </div>
-      <div class="hand-list" id="hand-list">
-        ${ (current && current.hands.length) ? current.hands.map((h,i)=>`
-          <div class="hand-row"><span class="idx">${i+1}</span><span>${h.a}</span><span style="opacity:.4">—</span><span>${h.b}</span></div>
-        `).join('') : '<div style="text-align:center;opacity:.4;font-size:12px;padding:6px 0">سجل هذه الصكة لسه فاضي</div>' }
+      <div class="ph-grid">
+        <div class="ph-team" id="nameA"></div>
+        <button id="dealerArrowBtn" class="dealer-arrow-btn">
+          <svg id="dealerSvg" viewBox="0 0 24 24" width="26" height="26" style="transition:transform .3s ease">
+            <path d="M2 9h10V4l10 8-10 8v-5H2z" fill="currentColor"/>
+          </svg>
+        </button>
+        <div class="ph-team b" id="nameB"></div>
+        <div class="ph-num" id="numA">0</div>
+        <div class="ph-mid" id="roundInfo"></div>
+        <div class="ph-num b" id="numB">0</div>
       </div>
     </div>
 
-    <div class="divider"></div>
-    <label>أضف نقاط جديدة لسجل الجلسة</label>
-    <div class="row">
-      <input type="text" inputmode="numeric" pattern="[0-9]*" id="inpA" placeholder="${teamNames(session,'A')}">
-      <input type="text" inputmode="numeric" pattern="[0-9]*" id="inpB" placeholder="${teamNames(session,'B')}">
-      <button class="btn" id="addHandBtn" style="flex:0 0 auto">تسجيل</button>
+    <div class="play-scroll" id="playScroll"></div>
+
+    <div class="entry-bar" id="entryBar">
+      <div class="entry-grid">
+        <input type="text" class="score-inp" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" autocomplete="off" id="inpA" placeholder="0" aria-label="نقاط ${teamNames(session,'A')}">
+        <button class="btn rec-btn" id="addHandBtn">تسجيل</button>
+        <input type="text" class="score-inp" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" autocomplete="off" id="inpB" placeholder="0" aria-label="نقاط ${teamNames(session,'B')}">
+      </div>
+      <div class="entry-actions">
+        <label class="mini-btn" id="handPhotoLabel">
+          <span id="handPhotoText">📷 صورة مع التسجيلة</span>
+          <input type="file" accept="image/*" id="handPhotoInput" style="display:none">
+        </label>
+        <button class="mini-btn" id="undoBtn">↩️ تراجع</button>
+      </div>
     </div>
-    <div class="hint">اكتب النقاط لكل فريق. بعد ثاني رقم ينتقل تلقائي للفريق الثاني. أول فريق يوصل ${session.target} نقطة تفوز له الصكة.</div>
-    <button class="btn secondary" id="undoBtn" style="width:100%;margin-top:10px" ${canUndo?'':'disabled'}>↩️ تراجع عن آخر تسجيلة</button>
   `;
-  wrap.appendChild(card);
+  wrap.appendChild(app);
 
-  if(finishedSaalifs.length){
-    const hist = document.createElement('div');
-    hist.className='card';
-    hist.innerHTML = `<h2>صكك الليلة</h2>`;
-    finishedSaalifs.slice().reverse().forEach((sf, idx)=>{
-      const n = finishedSaalifs.length - idx;
-      const row = el(`<div class="saalfa-result">
-        <span>صكة ${n}${sf.photoUrl?' <span class="camera-mark">📷</span>':''}</span>
-        <span>${sf.finalA} — ${sf.finalB}${sf.durationMs?`<br><small style="opacity:.55;font-weight:400">${formatDuration(sf.durationMs)}</small>`:''}</span>
-        <span class="win">فاز ${teamLabel(session, sf.winner)}</span>
-      </div>`);
-      row.onclick = ()=> openSaalfaDetail(session, sf, n);
-      hist.appendChild(row);
-    });
-    wrap.appendChild(hist);
-  }
+  const a = app.querySelector('#inpA');
+  const b = app.querySelector('#inpB');
+  const entry = app.querySelector('#entryBar');
 
-  const endCard = document.createElement('div');
-  endCard.className='card';
-  endCard.innerHTML = `<button class="btn danger" id="endSessionBtn" style="width:100%">إنهاء الجلسة</button>`;
-  wrap.appendChild(endCard);
+  /* وضع الكتابة: نصغّر الهيدر شوي لما الكيبورد مفتوح */
+  const updateTyping = ()=>{
+    const ae = document.activeElement;
+    app.classList.toggle('typing', ae===a || ae===b);
+  };
+  entry.addEventListener('focusin', updateTyping);
+  entry.addEventListener('focusout', ()=> setTimeout(updateTyping, 60));
 
-  setTimeout(()=>{
-    const a = document.getElementById('inpA');
-    const b = document.getElementById('inpB');
+  /* تسجيل: نفرّغ الخانات ونرجّع التركيز على الأولى فورًا (قبل أي انتظار) عشان الكيبورد يظل مفتوح */
+  const submit = ()=>{
+    const s = liveSession();
+    if(!s) return;
+    const wasTyping = document.activeElement===a || document.activeElement===b;
+    const av = a.value, bv = b.value;
+    a.value = '';
+    b.value = '';
+    if(wasTyping) a.focus();
+    addHand(s.id, av, bv);
+  };
 
-    a.addEventListener('input', ()=>{
-      a.value = a.value.replace(/[^0-9]/g,'');
-      if(a.value.length > 2){
-        const overflow = a.value.slice(2);
-        a.value = a.value.slice(0,2);
-        b.value = overflow;
-        b.focus();
-        b.setSelectionRange(b.value.length, b.value.length);
-      }
-    });
-    b.addEventListener('input', ()=>{
-      b.value = b.value.replace(/[^0-9]/g,'');
-      if(b.value.length >= 2){
-        addHand(session, a.value, b.value);
-      }
-    });
+  a.addEventListener('input', ()=>{
+    a.value = a.value.replace(/[^0-9]/g,'');
+    if(a.value.length > 2){
+      const overflow = a.value.slice(2);
+      a.value = a.value.slice(0,2);
+      b.value = overflow;
+      b.focus();
+      b.setSelectionRange(b.value.length, b.value.length);
+    }
+  });
+  b.addEventListener('input', ()=>{
+    b.value = b.value.replace(/[^0-9]/g,'');
+    if(b.value.length >= 2) submit();
+  });
+  a.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); b.focus(); } });
+  b.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); submit(); } });
 
-    document.getElementById('addHandBtn').onclick = ()=> addHand(session, a.value, b.value);
-    a.onkeydown = (e)=>{ if(e.key==='Enter') b.focus(); };
-    b.onkeydown = (e)=>{ if(e.key==='Enter') addHand(session, a.value, b.value); };
-    document.getElementById('endSessionBtn').onclick = ()=> endSession(session);
-    const undoBtn = document.getElementById('undoBtn');
-    if(undoBtn) undoBtn.onclick = ()=> undoLastHand(session);
-    if(!document.querySelector('.overlay')) a.focus();
+  const recBtn = app.querySelector('#addHandBtn');
+  const undoBtn = app.querySelector('#undoBtn');
+  /* الضغط على الأزرار ما ياخذ التركيز من الخانة (يبقي الكيبورد مفتوح) */
+  [recBtn, undoBtn].forEach(btn=> btn.addEventListener('mousedown', (e)=> e.preventDefault()));
+  recBtn.onclick = submit;
+  undoBtn.onclick = ()=>{ const s = liveSession(); if(s) undoLastHand(s.id); };
 
-    const updateTimer = ()=>{
-      const t = document.getElementById('liveTimer');
-      if(!t){ if(timerHandle){ clearInterval(timerHandle); timerHandle=null; } return; }
-      t.textContent = '⏱ ' + formatDuration(Date.now() - (session.currentStart || Date.now()));
-    };
-    updateTimer();
-    if(timerHandle) clearInterval(timerHandle);
-    timerHandle = setInterval(updateTimer, 1000);
-  },0);
+  const handPhotoInput = app.querySelector('#handPhotoInput');
+  handPhotoInput.onchange = ()=>{
+    const file = handPhotoInput.files[0];
+    if(file){
+      pendingHandPhoto = file;
+      setHandPhotoText('📷 صورة مرفقة، بتنحفظ مع التسجيلة ✓');
+    }
+  };
 
+  /* باقي الأزرار والعناصر المتغيّرة: تفويض واحد */
+  app.addEventListener('click', (e)=>{
+    const s = liveSession();
+    if(!s) return;
+    const t = e.target;
+    if(t.closest('#dealerArrowBtn')){ rotateDealer(s); return; }
+    if(t.closest('#menuBtnInline')){ openPlayMenu(); return; }
+    if(t.closest('#projBtn')){ openProjection(s, false); return; }
+    const thumb = t.closest('.hand-thumb');
+    if(thumb){ openPhotoLightbox(thumb.dataset.url); return; }
+    const row = t.closest('.saalfa-result');
+    if(row){
+      const sf = s.saalifs.find(x=>x.id===row.dataset.sfid);
+      if(sf) openSaalfaDetail(s, sf, parseInt(row.dataset.n,10));
+      return;
+    }
+    if(t.closest('#endSessionBtn')){ endSession(s); return; }
+  });
+
+  fillPlay(app, session);
   return wrap;
 }
 
-async function addHand(session, aVal, bVal){
-  const a = aVal.trim()==='' ? 0 : parseInt(aVal,10);
-  const b = bVal.trim()==='' ? 0 : parseInt(bVal,10);
+function setHandPhotoText(text){
+  const t = document.getElementById('handPhotoText');
+  if(t) t.textContent = text;
+}
+
+/* تحديث الأرقام والقوائم فقط — الخانات وشريط الإدخال ما يتلمسون */
+function fillPlay(app, session){
+  const finished = session.saalifs.filter(sf=>sf.winner);
+  const current = session.saalifs.find(sf=>!sf.winner);
+
+  let cumA=0, cumB=0;
+  (current ? current.hands : []).forEach(h=>{ cumA+=h.a; cumB+=h.b; });
+  const winsA = finished.filter(sf=>sf.winner==='A').length;
+  const winsB = finished.filter(sf=>sf.winner==='B').length;
+  const lastSaalfa = session.saalifs[session.saalifs.length-1];
+  const canUndo = !!(lastSaalfa && lastSaalfa.hands.length>0);
+
+  const q = (id)=> app.querySelector('#'+id);
+  q('hdrInfo').textContent = `${session.date} · الهدف ${session.target}`;
+  q('nameA').textContent = teamLabel(session,'A');
+  q('nameB').textContent = teamLabel(session,'B');
+  q('numA').textContent = cumA;
+  q('numB').textContent = cumB;
+  q('roundInfo').innerHTML = `صكة ${finished.length+1}<br>(${winsA} : ${winsB})<div class="timer-badge" id="liveTimer">⏱ ${formatDuration(Date.now() - (session.currentStart || Date.now()))}</div>`;
+  q('dealerSvg').style.transform = `rotate(${(session.dealerIndex||0) * -90}deg)`;
+  q('dealerArrowBtn').title = 'الموزع: ' + playerName(dealerSeatOrder(session)[session.dealerIndex || 0]);
+  q('undoBtn').disabled = !canUndo;
+
+  const handsHtml = (current && current.hands.length)
+    ? current.hands.map((h,i)=>`
+        <div class="hand-row">
+          <span class="idx">${i+1}</span><span>${h.a}</span><span style="opacity:.4">—</span><span>${h.b}</span>
+          ${h.photoUrl?`<img src="${h.photoUrl}" class="hand-thumb" data-url="${h.photoUrl}">`:'<span style="width:24px"></span>'}
+        </div>`).join('')
+    : `<div class="hand-empty">سجل هذي الصكة لسه فاضي<br><small>اكتب نقاط الفريق الأول (رقمين)، والرقم الثالث ينتقل لحاله للفريق الثاني، وبعد ثاني رقم عنده يتسجل تلقائي. أول فريق يوصل ${session.target} يفوز بالصكة.</small></div>`;
+
+  const prevHtml = finished.length ? `
+    <div class="card prev-card">
+      <h2>صكك الليلة</h2>
+      ${finished.slice().reverse().map((sf, idx)=>{
+        const n = finished.length - idx;
+        return `<div class="saalfa-result" data-sfid="${sf.id}" data-n="${n}">
+          <span>صكة ${n}${sf.photoUrl?' <span class="camera-mark">📷</span>':''}</span>
+          <span>${sf.finalA} — ${sf.finalB}${sf.durationMs?`<br><small style="opacity:.55;font-weight:400">${formatDuration(sf.durationMs)}</small>`:''}</span>
+          <span class="win">فاز ${teamLabel(session, sf.winner)}</span>
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
+  const html = `
+    <div class="hand-box" id="handBox">${handsHtml}</div>
+    ${prevHtml}
+    <div class="end-wrap"><button class="btn danger" id="endSessionBtn" style="width:100%">إنهاء الجلسة</button></div>
+  `;
+  const scroll = q('playScroll');
+  if(app._scrollHtml !== html){
+    app._scrollHtml = html;
+    scroll.innerHTML = html;
+    const box = scroll.querySelector('#handBox');
+    if(box) box.scrollTop = box.scrollHeight;   // آخر تسجيلة تبان دايم
+  }
+}
+
+async function addHand(sid, aVal, bVal){
+  const a = String(aVal).trim()==='' ? 0 : parseInt(aVal,10);
+  const b = String(bVal).trim()==='' ? 0 : parseInt(bVal,10);
   if(isNaN(a) || isNaN(b) || a<0 || b<0){
     alert('اكتب نقاط صحيحة للفريقين');
     return;
   }
+
+  let photoUrl = null;
+  if(pendingHandPhoto){
+    const photoToUpload = pendingHandPhoto;
+    pendingHandPhoto = null;
+    setHandPhotoText('📷 يرفع الصورة...');
+    try{
+      photoUrl = await uploadPhotoFile(photoToUpload);
+    }catch(e){
+      console.error('hand photo upload failed', e);
+    }
+    setHandPhotoText('📷 صورة مع التسجيلة');
+    const inp = document.getElementById('handPhotoInput');
+    if(inp) inp.value = '';
+  }
+
+  /* نجيب الجلسة بعد الانتظار عشان نتعامل مع آخر نسخة من البيانات */
+  const session = getSession(sid);
+  if(!session || session.ended) return;
+
   let current = session.saalifs.find(sf=>!sf.winner);
   if(!current){
     current = {id:uid(), hands:[], winner:null, finalA:0, finalB:0};
     session.saalifs.push(current);
   }
-  current.hands.push({a,b});
+  const hand = {a,b};
+  if(photoUrl) hand.photoUrl = photoUrl;
+  current.hands.push(hand);
+  session.dealerIndex = ((session.dealerIndex || 0) + 1) % 4;
+
   const cumA = current.hands.reduce((s,h)=>s+h.a,0);
   const cumB = current.hands.reduce((s,h)=>s+h.b,0);
   let justFinished = false;
@@ -670,21 +1038,27 @@ async function addHand(session, aVal, bVal){
     session.currentStart = Date.now();
     justFinished = true;
   }
+
+  render();                 // نعرض النتيجة فورًا
+  const finishedId = current.id;
+  const idx = session.saalifs.filter(sf=>sf.winner).length;
   await saveSessions();
-  render();
+
   if(justFinished){
-    const idx = session.saalifs.filter(sf=>sf.winner).length;
-    openSaalfaDetail(session, current, idx);
+    const s2 = getSession(sid);
+    const sf2 = s2 && s2.saalifs.find(x=>x.id===finishedId);
+    if(s2 && sf2) openSaalfaDetail(s2, sf2, idx);
   }
 }
 
-async function undoLastHand(session){
-  if(!session.saalifs.length) return;
+async function undoLastHand(sid){
+  const session = getSession(sid);
+  if(!session || !session.saalifs.length) return;
   const last = session.saalifs[session.saalifs.length-1];
   if(!last.hands.length){
     session.saalifs.pop();
-    await saveSessions();
     render();
+    await saveSessions();
     return;
   }
   last.hands.pop();
@@ -698,15 +1072,16 @@ async function undoLastHand(session){
   if(last.hands.length === 0){
     session.saalifs.pop();
   }
-  await saveSessions();
   render();
+  await saveSessions();
 }
 
 async function endSession(session){
-  session.ended = true;
+  const s = getSession(session.id) || session;
+  s.ended = true;
   activeSessionId = null;
-  await saveSessions();
   render();
+  await saveSessions();
 }
 
 function renderNewSessionForm(){
@@ -812,12 +1187,14 @@ function renderNewSessionForm(){
         target,
         saalifs: [],
         ended: false,
-        currentStart: Date.now()
+        currentStart: Date.now(),
+        dealerIndex: 0
       };
       sessions.push(session);
       activeSessionId = session.id;
-      await saveSessions();
       render();
+      openProjection(session, true);
+      await saveSessions();
     };
   }
   renderTeams();
@@ -957,6 +1334,7 @@ function openSaalfaDetail(session, sf, idx){
       <span style="opacity:.4">—</span>
       <span>${h.b}</span>
       <span style="width:70px;text-align:left;opacity:.5;font-size:11px">(${cumA} : ${cumB})</span>
+      ${h.photoUrl?`<img src="${h.photoUrl}" class="hand-thumb" data-url="${h.photoUrl}">`:'<span style="width:24px"></span>'}
     </div>`;
   }).join('');
 
@@ -987,10 +1365,17 @@ function openSaalfaDetail(session, sf, idx){
           <input type="file" accept="image/*" id="photoInput" style="display:none">
         </label>
       `}
+      <div class="divider"></div>
+      <button class="btn danger" id="deleteSaalfaBtn" style="width:100%">🗑 حذف الصكة من السجل</button>
     </div>
   </div>`);
   overlay.querySelector('.close-x').onclick = ()=> overlay.remove();
   overlay.onclick = (e)=>{ if(e.target===overlay) overlay.remove(); };
+  overlay.addEventListener('click', (e)=>{
+    const img = e.target.closest('.hand-thumb');
+    if(img) openPhotoLightbox(img.dataset.url);
+  });
+  overlay.querySelector('#deleteSaalfaBtn').onclick = ()=> deleteSaalfa(session, sf);
   const photoInput = overlay.querySelector('#photoInput');
   if(photoInput){
     photoInput.onchange = ()=>{
@@ -1001,13 +1386,15 @@ function openSaalfaDetail(session, sf, idx){
   const removePhotoBtn = overlay.querySelector('#removePhotoBtn');
   if(removePhotoBtn){
     removePhotoBtn.onclick = async ()=>{
-      delete sf.photoUrl;
-      await saveSessions();
+      const r = freshRefs(session, sf);
+      delete r.f.photoUrl;
       overlay.remove();
-      openSaalfaDetail(session, sf, idx);
+      openSaalfaDetail(r.s, r.f, idx);
+      render();
+      await saveSessions();
     };
   }
-  root.appendChild(overlay);
+  mountOverlay(overlay);
 }
 
 async function uploadSaalfaPhoto(session, sf, idx, file){
@@ -1027,16 +1414,35 @@ async function uploadSaalfaPhoto(session, sf, idx, file){
     });
     if(!res.ok) throw new Error('upload failed: ' + res.status);
     const data = await res.json();
-    sf.photoUrl = data.secure_url;
+    const r = freshRefs(session, sf);
+    r.f.photoUrl = data.secure_url;
     await saveSessions();
     const overlayEl = document.querySelector('.overlay');
     if(overlayEl) overlayEl.remove();
-    openSaalfaDetail(session, sf, idx);
+    const r2 = freshRefs(session, sf);
+    openSaalfaDetail(r2.s, r2.f, idx);
   }catch(e){
     console.error('photo upload failed', e);
     alert('ما قدرنا نرفع الصورة. تأكد من بيانات Cloudinary وحاول مرة ثانية.');
     if(btn){ btn.classList.remove('uploading'); btn.textContent = '📷 أضف صورة الصكة'; }
   }
+}
+
+/* البيانات تتبدّل بنسخ جديدة مع كل تحديث من القاعدة، فنجيب آخر نسخة قبل أي تعديل */
+function freshRefs(session, sf){
+  const s = getSession(session.id) || session;
+  const f = (s.saalifs||[]).find(x=>x.id===sf.id) || sf;
+  return {s, f};
+}
+
+async function deleteSaalfa(session, sf){
+  if(!confirm('تحذف هذي الصكة نهائيًا من السجل؟ ما تقدر ترجعها بعدين.')) return;
+  const r = freshRefs(session, sf);
+  r.s.saalifs = r.s.saalifs.filter(x=>x.id!==sf.id);
+  const overlayEl = document.querySelector('.overlay');
+  if(overlayEl) overlayEl.remove();
+  render();
+  await saveSessions();
 }
 
 function openPlayerDetail(pid){
@@ -1089,10 +1495,12 @@ function openPlayerDetail(pid){
   </div>`);
   overlay.querySelector('.close-x').onclick = ()=> overlay.remove();
   overlay.onclick = (e)=>{ if(e.target===overlay) overlay.remove(); };
-  root.appendChild(overlay);
+  mountOverlay(overlay);
 }
 
-if(isConfigured){
+if(isConfigured && !sdkLoaded){
+  showSdkError();
+} else if(isConfigured){
   initRealtime();
 } else {
   showSetupGate();
