@@ -265,7 +265,9 @@
     border-radius:10px;padding:10px 14px;margin-bottom:8px;font-size:13px;
     gap:8px;
     cursor:pointer;
+    flex-wrap:wrap;
   }
+  .saalfa-result .sf-when{flex:0 0 100%;font-size:11px;font-weight:500;opacity:.6;}
   .saalfa-result:hover{border-color:rgba(20,20,15,0.3);}
   .saalfa-result .win{color:var(--gold);font-weight:700;font-family:var(--font-body);white-space:nowrap;}
 
@@ -545,6 +547,46 @@ function formatDuration(ms){
   return `${m}:${s}`;
 }
 
+/* ---- تاريخ وساعة الصكة ----
+   الصكك الجديدة تحفظ وقت انتهائها (endedAt). الصكك القديمة ما فيها وقت محفوظ، فنعيد بناءه:
+   وقت إنشاء الجلسة (مخفي داخل رقمها) + مدة كل صكة قبلها. هذا الوقت تقديري ونعلّمه بـ ≈ */
+function idTimestamp(id){
+  if(!id || id.length < 7) return null;
+  const n = parseInt(id.slice(0,-5), 36);
+  return (n > 1.5e12 && n < 4e12) ? n : null;
+}
+
+function saalfaFinish(session, sf){
+  if(sf.endedAt) return {ts: sf.endedAt, est: false};
+  let t = idTimestamp(session.id);
+  if(t === null) return null;
+  for(const x of (session.saalifs || [])){
+    if(!x.winner) continue;
+    if(x.endedAt){ t = x.endedAt; }
+    else if(typeof x.durationMs === 'number'){ t += x.durationMs; }
+    else { if(x === sf) return null; t = null; }
+    if(x === sf) return t === null ? null : {ts: t, est: !x.endedAt};
+    if(t === null) return null;
+  }
+  return null;
+}
+
+function fmtWhen(ts){
+  const d = new Date(ts);
+  return {
+    date: d.toLocaleDateString('ar-SA-u-ca-gregory', {weekday:'long', day:'numeric', month:'long'}),
+    time: d.toLocaleTimeString('ar-SA-u-ca-gregory', {hour:'numeric', minute:'2-digit', hour12:true})
+  };
+}
+
+function whenLine(session, sf, timeOnly){
+  const f = saalfaFinish(session, sf);
+  if(!f) return '';
+  const w = fmtWhen(f.ts);
+  const timeText = (f.est ? '≈ ' : '') + w.time;
+  return `<div class="sf-when">🕘 ${timeOnly ? timeText : `${w.date} — ${timeText}`}</div>`;
+}
+
 let timerHandle = null;
 let pendingHandPhoto = null;
 
@@ -655,6 +697,7 @@ function playerMatches(pid){
       if(!sf.winner) return;
       list.push({
         date: session.date,
+        time: (()=>{ const f = saalfaFinish(session, sf); return f ? (f.est?'≈ ':'') + fmtWhen(f.ts).time : ''; })(),
         index: idx+1,
         partners: partners.map(playerName),
         opponents: opponents.map(playerName),
@@ -1001,6 +1044,7 @@ function fillPlay(app, session){
           <span>صكة ${n}${sf.photoUrl?' <span class="camera-mark">📷</span>':''}</span>
           <span>${sf.finalA} — ${sf.finalB}${sf.durationMs?`<br><small style="opacity:.55;font-weight:400">${formatDuration(sf.durationMs)}</small>`:''}</span>
           <span class="win">فاز ${teamLabel(session, sf.winner)}</span>
+          ${whenLine(session, sf, true)}
         </div>`;
       }).join('')}
     </div>` : '';
@@ -1064,6 +1108,7 @@ async function addHand(sid, aVal, bVal){
     current.finalB = cumB;
     current.winner = cumA > cumB ? 'A' : (cumB > cumA ? 'B' : (cumA>=session.target?'A':'B'));
     current.durationMs = Date.now() - (session.currentStart || Date.now());
+    current.endedAt = Date.now();
     session.currentStart = Date.now();
     justFinished = true;
   }
@@ -1097,6 +1142,7 @@ async function undoLastHand(sid){
     last.finalA = 0;
     last.finalB = 0;
     delete last.durationMs;
+    delete last.endedAt;
   }
   if(last.hands.length === 0){
     session.saalifs.pop();
@@ -1256,6 +1302,7 @@ function renderHistory(){
         <span>صكة ${i+1}${sf.photoUrl?' <span class="camera-mark">📷</span>':''}</span>
         <span>${sf.finalA} — ${sf.finalB}${sf.durationMs?`<br><small style="opacity:.55;font-weight:400">${formatDuration(sf.durationMs)}</small>`:''}</span>
         <span class="win">فاز ${teamLabel(session, sf.winner)}</span>
+        ${whenLine(session, sf, false)}
       </div>`);
       row.onclick = ()=> openSaalfaDetail(session, sf, i+1);
       card.appendChild(row);
@@ -1460,6 +1507,7 @@ function openSaalfaDetail(session, sf, idx){
       <button class="close-x">✕</button>
       <h3>صكة ${idx}</h3>
       <div class="hint" style="margin-bottom:4px">${session.date} — الهدف ${session.target} نقطة</div>
+      ${(()=>{ const f = saalfaFinish(session, sf); if(!f) return ''; const w = fmtWhen(f.ts); return `<div class="hint" style="margin-bottom:4px">🕘 انتهت ${w.date} — ${f.est?'≈ ':''}${w.time}${f.est?' (وقت تقديري)':''}</div>`; })()}
       <div class="team-tag" style="margin-bottom:14px">${teamLabel(session,'A')} &nbsp;ضد&nbsp; ${teamLabel(session,'B')}</div>
       <div class="divider"></div>
       <h2 style="font-size:14px;margin-bottom:8px">كل التسجيلات</h2>
@@ -1608,7 +1656,7 @@ function openPlayerDetail(pid){
     const againstText = m.opponents.length ? `ضد ${m.opponents.join(' و ')}` : '';
     return `<div class="match-row">
       <div class="top-line">
-        <span class="match-date">${m.date} — صكة ${m.index}</span>
+        <span class="match-date">${m.date}${m.time?' '+m.time:''} — صكة ${m.index}</span>
         <span class="match-result ${m.won?'win':'loss'}">${m.won?'فوز':'خسارة'}</span>
       </div>
       <div class="with-against">${withText} ${againstText}</div>
