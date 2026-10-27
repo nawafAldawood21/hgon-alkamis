@@ -378,6 +378,8 @@
   .photo-upload-btn:hover{border-color:var(--ink);}
   .photo-upload-btn.uploading{opacity:.6;pointer-events:none;}
   .camera-mark{opacity:.5;font-size:12px;margin-right:4px;}
+  .history-filter{display:flex;gap:8px;margin:0 0 12px;}
+  .history-filter .chip{padding:9px 16px;font-size:14px;font-weight:700;}
   .photo-badge{
     display:inline-flex;align-items:center;gap:3px;vertical-align:middle;
     background:var(--ink);color:#fff;border-radius:10px;padding:1px 8px;
@@ -1392,6 +1394,8 @@ function renderNewSessionForm(){
 }
 
 /* ---- HISTORY TAB ---- */
+let historyPhotoOnly = false;
+
 function renderHistory(){
   const wrap = document.createElement('div');
   const done = sessions.filter(s=>s.saalifs.some(sf=>sf.winner)).slice().reverse();
@@ -1399,7 +1403,24 @@ function renderHistory(){
     wrap.appendChild(el(`<div class="empty">ما فيه صكك متسجلة بعد.<br>ابدأ جلسة من تبويب "اللعب" 🃏</div>`));
     return wrap;
   }
+
+  /* فلتر الصكك المصوّرة: صورة للصكة نفسها أو صورة بأي تسجيلة داخلها */
+  let photoTotal = 0;
+  done.forEach(s=> s.saalifs.forEach(sf=>{ if(sf.winner && photoCount(sf) > 0) photoTotal++; }));
+  const filterBar = el(`<div class="history-filter">
+    <div class="chip ${historyPhotoOnly?'selected':''}" id="photoOnlyChip">مصور الأكك 📷 <span style="opacity:.7">(${photoTotal})</span></div>
+  </div>`);
+  filterBar.querySelector('#photoOnlyChip').onclick = ()=>{ historyPhotoOnly = !historyPhotoOnly; render(); };
+  wrap.appendChild(filterBar);
+
+  let shownSessions = 0;
   done.forEach(session=>{
+    /* نحتفظ برقم الصكة الأصلي حتى لو الفلتر مخفي اللي قبلها */
+    const finished = session.saalifs.filter(sf=>sf.winner).map((sf,i)=>({sf, n:i+1}));
+    const visible = historyPhotoOnly ? finished.filter(x=> photoCount(x.sf) > 0) : finished;
+    if(!visible.length) return;
+    shownSessions++;
+
     const card = document.createElement('div');
     card.className='card';
     const winsA = session.saalifs.filter(sf=>sf.winner==='A').length;
@@ -1411,18 +1432,22 @@ function renderHistory(){
       </div>
       <div class="team-tag" style="margin-bottom:10px">${teamLabel(session,'A')} &nbsp;ضد&nbsp; ${teamLabel(session,'B')}</div>
     `;
-    session.saalifs.filter(sf=>sf.winner).forEach((sf,i)=>{
+    visible.forEach(({sf, n})=>{
       const row = el(`<div class="saalfa-result">
-        <span>صكة ${i+1} ${photoBadge(sf)}</span>
+        <span>صكة ${n} ${photoBadge(sf)}</span>
         <span>${sf.finalA} — ${sf.finalB}${sf.durationMs?`<br><small style="opacity:.55;font-weight:400">${formatDuration(sf.durationMs)}</small>`:''}</span>
         <span class="win">فاز ${teamLabel(session, sf.winner)}</span>
         ${whenLine(session, sf, false)}
       </div>`);
-      row.onclick = ()=> openSaalfaDetail(session, sf, i+1);
+      row.onclick = ()=> openSaalfaDetail(session, sf, n);
       card.appendChild(row);
     });
     wrap.appendChild(card);
   });
+
+  if(historyPhotoOnly && !shownSessions){
+    wrap.appendChild(el(`<div class="empty">ما فيه صكك فيها صور بعد.<br>تقدر تضيف صورة للصكة من تفاصيلها، أو مع أي تسجيلة وقت اللعب 📷</div>`));
+  }
   return wrap;
 }
 
